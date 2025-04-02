@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>久智数字人-live</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="srs.sdk.js"></script>
+    <style>
+    body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: #000;
+        font-family: 'Noto Sans SC', sans-serif;
+    }
+    
+    video {
+        width: 100%;
+        height: 100vh;
+        object-fit: contain;
+        display: block;
+    }
+    
+    #media {
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer; /* Indicate clickable area */
+    }
+    
+    #control-panel {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        background-color: rgba(18, 18, 24, 0.85);
+        backdrop-filter: blur(10px);
+        z-index: 100;
+        transition: all 0.3s ease;
+        color: white;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    
+    #control-panel.hidden {
+        transform: translateY(-100%);
+    }
+    
+    .control-inner {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    .panel-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .panel-title {
+        font-size: 18px;
+        font-weight: 500;
+        margin: 0;
+        display: flex;
+        align-items: center;
+    }
+    
+    .panel-title::before {
+        content: "";
+        display: inline-block;
+        width: 4px;
+        height: 18px;
+        background: linear-gradient(to bottom, #4CAF50, #2196F3);
+        margin-right: 10px;
+        border-radius: 2px;
+    }
+    
+    .connection-form {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 15px;
+        background-color: rgba(255, 255, 255, 0.05);
+        padding: 15px;
+        border-radius: 8px;
+    }
+    
+    .form-group {
+        display: flex;
+        align-items: center;
+    }
+    
+    .form-label {
+        font-size: 14px;
+        margin-right: 10px;
+        color: rgba(255, 255, 255, 0.8);
+    }
+    
+    #server-url {
+        flex: 1;
+        min-width: 250px;
+        padding: 10px 15px;
+        background-color: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 6px;
+        color: white;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+    
+    #server-url:focus {
+        outline: none;
+        border-color: #2196F3;
+        background-color: rgba(255, 255, 255, 0.15);
+    }
+    
+    #server-url::placeholder {
+        color: rgba(255, 255, 255, 0.4);
+    }
+    
+    .stun-option {
+        white-space: nowrap;
+        display: flex;
+        align-items: center;
+    }
+    
+    .stun-option input[type="checkbox"] {
+        margin-right: 8px;
+        accent-color: #2196F3;
+    }
+    
+    .button-group {
+        display: flex;
+        gap: 10px;
+    }
+    
+    button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        color: white;
+        font-weight: 500;
+        font-size: 14px;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    button:active {
+        transform: translateY(0);
+    }
+    
+    #connect-btn {
+        background: linear-gradient(135deg, #4CAF50, #2E7D32);
+    }
+    
+    #reconnect-btn {
+        background: linear-gradient(135deg, #2196F3, #0D47A1);
+    }
+    
+    #disconnect-btn {
+        background: linear-gradient(135deg, #F44336, #B71C1C);
+    }
+    
+    .status-section {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        margin-top: 15px;
+        padding: 15px;
+        background-color: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        gap: 15px;
+    }
+    
+    .status-item {
+        display: flex;
+        align-items: center;
+        margin-right: 10px;
+        white-space: nowrap;
+        background-color: rgba(0, 0, 0, 0.2);
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-size: 14px;
+    }
+    
+    .status-label {
+        color: rgba(255, 255, 255, 0.7);
+        margin-right: 5px;
+    }
+    
+    .status-value {
+        color: white;
+        font-weight: 500;
+    }
+    
+    .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 8px;
+        position: relative;
+    }
+    
+    .status-indicator::after {
+        content: "";
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        border-radius: 50%;
+        border: 2px solid transparent;
+        animation: none;
+    }
+    
+    .status-indicator.connected {
+        background-color: #4CAF50;
+        box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+    }
+    
+    .status-indicator.disconnected {
+        background-color: #F44336;
+        box-shadow: 0 0 10px rgba(244, 67, 54, 0.5);
+    }
+    
+    .status-indicator.connecting {
+        background-color: #FF9800;
+        box-shadow: 0 0 10px rgba(255, 152, 0, 0.5);
+    }
+    
+    .status-indicator.connecting::after {
+        border-color: #FF9800;
+        animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+        0% {
+            transform: scale(1);
+            opacity: 1;
+        }
+        100% {
+            transform: scale(1.5);
+            opacity: 0;
+        }
+    }
+    
+    /* Tooltip to indicate double-click functionality */
+    #tooltip {
+        position: absolute;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: rgba(0,0,0,0.7);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 30px;
+        font-size: 14px;
+        opacity: 0;
+        transition: opacity 0.5s ease;
+        pointer-events: none;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        backdrop-filter: blur(5px);
+    }
+    
+    #tooltip.visible {
+        opacity: 1;
+    }
+    
+    /* 改进窄屏适配 */
+    @media (max-width: 768px) {
+        .control-inner {
+            padding: 15px 10px;
+        }
+        
+        .connection-form {
+            flex-direction: column;
+            align-items: stretch;
+            padding: 10px;
+        }
+        
+        .form-group {
+            width: 100%;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .form-label {
+            margin-bottom: 5px;
+        }
+        
+        #server-url {
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .status-section {
+            flex-direction: column;
+            padding: 10px;
+        }
+        
+        .status-item {
+            margin-bottom: 8px;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: flex-start;
+        }
+        
+        .status-item .status-indicator {
+            margin-right: 8px;
+        }
+        
+        .status-label {
+            margin-right: auto;
+            display: flex;
+            align-items: center;
+        }
+        
+        .status-value {
+            margin-left: auto;
+        }
+        
+        .button-group {
+            width: 100%;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+        
+        button {
+            flex: 1;
+            padding: 12px 5px;
+            font-size: 14px;
+            min-width: 0;
+            white-space: nowrap;
+        }
+        
+        .stun-option {
+            margin: 5px 0;
+        }
+    }
+    
+    /* 超窄屏幕适配 */
+    @media (max-width: 480px) {
+        .panel-title {
+            font-size: 16px;
+        }
+        
+        .status-item {
+            padding: 6px 10px;
+            font-size: 12px;
+        }
+        
+        button {
+            padding: 10px 5px;
+            font-size: 12px;
+        }
+    }
+    
+    /* 添加SRS相关样式 */
+    .stream-type-selector {
+        display: flex;
+        background-color: rgba(255, 255, 255, 0.05);
+        padding: 10px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+    
+    .stream-type-option {
+        flex: 1;
+        text-align: center;
+        padding: 10px;
+        cursor: pointer;
+        border-radius: 6px;
+        transition: all 0.2s;
+        color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .stream-type-option.active {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: white;
+        font-weight: 500;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    
+    .stream-type-option:hover:not(.active) {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+    
+    /* 确保视频元素正确显示 */
+    #video {
+        width: 100%;
+        height: 100vh;
+        object-fit: contain;
+        background-color: #000;
+        display: block;
+    }
+    
+    /* 添加视频加载指示器 */
+    #video-loading {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        background-color: rgba(0,0,0,0.7);
+        padding: 15px 30px;
+        border-radius: 30px;
+        font-size: 16px;
+        display: none;
+    }
+    </style>
+</head>
+<body>
+
+<div id="control-panel">
+    <div class="control-inner">
+        <div class="panel-header">
+            <h2 class="panel-title">数字人控制台</h2>
+        </div>
+        
+        <div class="stream-type-selector">
+            <div class="stream-type-option active" id="webrtc-option" onclick="selectStreamType('webrtc')">WebRTC</div>
+            <div class="stream-type-option" id="srs-option" onclick="selectStreamType('srs')">SRS流</div>
+        </div>
+        
+        <div class="connection-form">
+            <div class="form-group" style="flex: 1;">
+                <label for="server-url" class="form-label">数字人源地址：</label>
+                <input id="server-url" type="text" value="" placeholder="请输入服务器地址"/>
+            </div>
+            
+            <div class="stun-option" id="stun-option">
+                <input id="use-stun" type="checkbox" checked/>
+                <label for="use-stun" class="form-label">使用STUN服务器</label>
+            </div>
+            
+            <div class="button-group">
+                <button id="connect-btn" onclick="connectAndHide()">连接</button>
+                <button id="reconnect-btn" onclick="reconnect()">重连</button>
+                <button id="disconnect-btn" onclick="disconnect()">断开</button>
+            </div>
+        </div>
+        
+        <div class="status-section">
+            <div class="status-item">
+                <span class="status-indicator disconnected" id="connection-indicator"></span>
+                <span class="status-label">连接状态：</span>
+                <span class="status-value" id="connection-debug">未连接</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">视频轨道：</span>
+                <span class="status-value" id="video-debug">无</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">连接码：</span>
+                <span class="status-value" id="session-id-display">0</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="media">
+    <video id="video" autoplay="true" playsinline="true"></video>
+    <audio id="audio" autoplay="true"></audio>
+    <div id="video-loading">视频加载中...</div>
+</div>
+
+<div id="tooltip">双击画面显示/隐藏控制台</div>
+
+<input type="hidden" id="sessionid" value="0">
+
+<script src="client.js"></script>
+<script type="text/javascript" src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+<script type="text/javascript">
+    // Control panel state
+    let controlsVisible = true;
+    let lastClickTime = 0;
+    let currentStreamType = 'webrtc'; // 默认使用WebRTC
+    let srsPlayer = null;
+    
+    function selectStreamType(type) {
+        currentStreamType = type;
+        
+        // 更新UI
+        document.getElementById('webrtc-option').classList.toggle('active', type === 'webrtc');
+        document.getElementById('srs-option').classList.toggle('active', type === 'srs');
+        
+        // 显示/隐藏STUN选项
+        document.getElementById('stun-option').style.display = type === 'webrtc' ? 'flex' : 'none';
+        
+        // 显示/隐藏连接码状态项
+        document.querySelector('.status-item:nth-child(3)').style.display = type === 'webrtc' ? '' : 'none';
+        
+        // 更新placeholder
+        if (type === 'webrtc') {
+            document.getElementById('server-url').placeholder = "请输入服务器地址";
+        } else {
+            document.getElementById('server-url').placeholder = "请输入SRS流地址 (例如: webrtc://example.com/live/stream)";
+        }
+        
+        // 如果已连接，断开当前连接
+        if (pc || srsPlayer) {
+            disconnect();
+        }
+    }
+    
+    function toggleControls() {
+        controlsVisible = !controlsVisible;
+        if (controlsVisible) {
+            document.getElementById('control-panel').classList.remove('hidden');
+        } else {
+            document.getElementById('control-panel').classList.add('hidden');
+        }
+    }
+    
+    function connectAndHide() {
+        // Store the server URL in localStorage so control.html can access it
+        localStorage.setItem('serverUrl', $('#server-url').val());
+        localStorage.setItem('useStun', $('#use-stun').prop('checked'));
+        localStorage.setItem('streamType', currentStreamType);
+        
+        // Update connection status
+        updateConnectionStatus('connecting');
+        document.getElementById('connection-debug').textContent = '连接中...';
+        
+        // Start the connection based on selected stream type
+        if (currentStreamType === 'webrtc') {
+            start();
+        } else {
+            startSrsPlayer();
+        }
+        
+        // Hide the control panel after a short delay
+        setTimeout(() => {
+            document.getElementById('control-panel').classList.add('hidden');
+            controlsVisible = false;
+        }, 1500);
+    }
+    
+    // SRS Player implementation
+    async function startSrsPlayer() {
+        if (srsPlayer) {
+            srsPlayer.close();
+        }
+        
+        srsPlayer = SrsRtcPlayerAsync();
+        
+        // Get the URL from input
+        const url = document.getElementById('server-url').value;
+        if (!url) {
+            alert('请输入SRS流地址');
+            updateConnectionStatus('disconnected');
+            return;
+        }
+        
+        // 添加调试信息显示到控制台
+        console.log("开始连接SRS流:", url);
+        
+        // 保留日志函数但改为只输出到控制台
+        function addDebugLog(message, type = 'info') {
+            // 只输出到控制台
+            console.log(`[${type}] ${message}`);
+        }
+        
+        // 修改URL处理
+        try {
+            // 检查URL格式
+            if (!url.startsWith('webrtc://')) {
+                addDebugLog('URL格式错误，应以webrtc://开头', 'error');
+                throw new Error('URL格式错误，应以webrtc://开头');
+            }
+            
+            // 解析URL
+            const urlParts = url.replace('webrtc://', '').split('/');
+            if (urlParts.length < 3) {
+                addDebugLog('URL格式错误，应为webrtc://server/app/stream', 'error');
+                throw new Error('URL格式错误，应为webrtc://server/app/stream');
+            }
+            
+            const server = urlParts[0];
+            const app = urlParts[1];
+            const stream = urlParts[2];
+            
+            addDebugLog(`解析URL: 服务器=${server}, 应用=${app}, 流=${stream}`);
+            
+            // 手动构建API URL
+            const apiUrl = `http://${server}:1985/rtc/v1/play/`;
+            addDebugLog(`API URL: ${apiUrl}`);
+            
+            // 修改SRS播放器的内部URL处理
+            const originalPrepareUrl = srsPlayer.__internal.prepareUrl;
+            srsPlayer.__internal.prepareUrl = function(url) {
+                const result = originalPrepareUrl.call(this, url);
+                
+                // 强制使用http协议
+                if (result.apiUrl.startsWith('file://')) {
+                    result.apiUrl = result.apiUrl.replace('file://', 'http://');
+                    addDebugLog(`修正API URL: ${result.apiUrl}`);
+                }
+                
+                return result;
+            };
+            
+            // Setup event handler for tracks
+            srsPlayer.ontrack = function(event) {
+                console.log('SRS Player got track:', event.track.kind);
+                addDebugLog(`收到媒体轨道: ${event.track.kind}, ID: ${event.track.id}, 状态: ${event.track.readyState}`);
+                
+                if (event.track.kind === 'video') {
+                    // 检查流是否存在
+                    if (!event.streams || event.streams.length === 0) {
+                        addDebugLog('警告: 视频轨道没有关联的媒体流', 'error');
+                        return;
+                    }
+                    
+                    const stream = event.streams[0];
+                    addDebugLog(`视频流信息: ID=${stream.id}, 活跃=${stream.active}, 轨道数=${stream.getTracks().length}`);
+                    
+                    // 保存流引用
+                    srsPlayer.stream = stream;
+                    
+                    // 设置视频元素
+                    const videoElement = document.getElementById('video');
+                    videoElement.srcObject = stream;
+                    
+                    // 添加视频元素事件监听
+                    videoElement.onloadedmetadata = function() {
+                        addDebugLog(`视频元数据已加载: ${videoElement.videoWidth}x${videoElement.videoHeight}`);
+                    };
+                    
+                    videoElement.onplay = function() {
+                        addDebugLog(`视频开始播放`);
+                    };
+                    
+                    videoElement.onplaying = function() {
+                        addDebugLog(`视频正在播放中`);
+                    };
+                    
+                    videoElement.onerror = function() {
+                        addDebugLog(`视频错误: ${videoElement.error.code} - ${videoElement.error.message}`, 'error');
+                    };
+                    
+                    // 强制播放
+                    videoElement.play().then(() => {
+                        addDebugLog('视频播放请求成功');
+                    }).catch(err => {
+                        addDebugLog(`视频播放请求失败: ${err}`, 'error');
+                        
+                        // 尝试自动恢复
+                        document.body.addEventListener('click', function autoPlayHandler() {
+                            videoElement.play();
+                            document.body.removeEventListener('click', autoPlayHandler);
+                            addDebugLog('尝试通过用户交互恢复播放');
+                        }, { once: true });
+                    });
+                    
+                    document.getElementById('video-debug').textContent = 'SRS视频 (已接收)';
+                }
+            };
+            
+            // Start playing
+            addDebugLog('开始播放...');
+            const session = await srsPlayer.play(url);
+            console.log("Got answer: ", session);
+            addDebugLog(`播放会话已建立: ${JSON.stringify(session)}`);
+            
+            // Update UI
+            updateConnectionStatus('connected');
+            document.getElementById('connection-debug').textContent = 'SRS已连接';
+            
+            // Update session ID if available
+            if (session.sessionid) {
+                document.getElementById('session-id-display').textContent = session.sessionid;
+                addDebugLog(`会话ID: ${session.sessionid}`);
+            }
+            
+            // 检查视频是否真的在播放
+            let videoCheckInterval = setInterval(() => {
+                const video = document.getElementById('video');
+                if (video.srcObject) {
+                    const videoTracks = video.srcObject.getVideoTracks();
+                    if (videoTracks.length > 0) {
+                        const track = videoTracks[0];
+                        addDebugLog(`视频轨道状态: ${track.readyState}, 已启用: ${track.enabled}, 静音: ${track.muted}`);
+                        
+                        // 检查视频尺寸
+                        if (video.videoWidth > 0 && video.videoHeight > 0) {
+                            addDebugLog(`视频尺寸: ${video.videoWidth}x${video.videoHeight}, 当前时间: ${video.currentTime.toFixed(2)}s`);
+                            document.getElementById('video-loading').style.display = 'none';
+                        } else {
+                            document.getElementById('video-loading').style.display = 'block';
+                            addDebugLog('视频尺寸为0，可能没有正确显示', 'error');
+                        }
+                    }
+                }
+            }, 2000);
+            
+        } catch (error) {
+            console.error('SRS Player error:', error);
+            addDebugLog(`错误: ${error.message}`, 'error');
+            
+            // 尝试修复URL问题
+            if (error.message.includes('Invalid URL') || error.message.includes('Failed to execute')) {
+                addDebugLog('尝试修复URL问题...', 'error');
+                
+                try {
+                    // 创建一个修改版的SRS播放器
+                    const fixedUrl = url.replace('webrtc://', '');
+                    const parts = fixedUrl.split('/');
+                    const server = parts[0];
+                    const app = parts[1] || 'live';
+                    const stream = parts[2] || 'livestream';
+                    
+                    // 手动构建请求
+                    addDebugLog(`手动构建请求: 服务器=${server}, 应用=${app}, 流=${stream}`);
+                    
+                    // 创建一个新的RTCPeerConnection
+                    const pc = new RTCPeerConnection({
+                        iceServers: [{urls: 'stun:stun.l.google.com:19302'}]
+                    });
+                    
+                    pc.addTransceiver("audio", {direction: "recvonly"});
+                    pc.addTransceiver("video", {direction: "recvonly"});
+                    
+                    addDebugLog('创建offer...');
+                    const offer = await pc.createOffer();
+                    await pc.setLocalDescription(offer);
+                    
+                    const apiUrl = `http://${server}:1985/rtc/v1/play/`;
+                    addDebugLog(`发送请求到: ${apiUrl}`);
+                    
+                    // 手动发送XHR请求
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            api: apiUrl,
+                            tid: Math.random().toString(16).substring(2),
+                            streamurl: `webrtc://${server}/${app}/${stream}`,
+                            clientip: null,
+                            sdp: offer.sdp
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP错误: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    addDebugLog(`收到响应: ${JSON.stringify(data)}`);
+                    
+                    if (data.code !== 0) {
+                        throw new Error(`SRS错误: ${data.code}`);
+                    }
+                    
+                    await pc.setRemoteDescription(
+                        new RTCSessionDescription({type: 'answer', sdp: data.sdp})
+                    );
+                    
+                    // 监听轨道
+                    pc.ontrack = function(event) {
+                        addDebugLog(`收到媒体轨道: ${event.track.kind}`);
+                        if (event.track.kind === 'video') {
+                            document.getElementById('video').srcObject = event.streams[0];
+                            document.getElementById('video-debug').textContent = 'SRS视频 (已接收)';
+                        }
+                    };
+                    
+                    // 保存连接
+                    srsPlayer = {
+                        pc: pc,
+                        close: function() {
+                            pc.close();
+                        }
+                    };
+                    
+                    // 更新UI
+                    updateConnectionStatus('connected');
+                    document.getElementById('connection-debug').textContent = 'SRS已连接 (手动模式)';
+                    
+                } catch (manualError) {
+                    addDebugLog(`手动连接失败: ${manualError.message}`, 'error');
+                    alert('SRS流连接失败: ' + manualError.message);
+                    updateConnectionStatus('disconnected');
+                }
+            } else {
+                alert('SRS流连接失败: ' + error.message);
+                updateConnectionStatus('disconnected');
+                srsPlayer.close();
+                srsPlayer = null;
+            }
+        }
+    }
+    
+    // Update session ID display
+    function updateSessionDisplay(id) {
+        document.getElementById('session-id-display').textContent = id;
+    }
+    
+    // Check if we already have a stored server URL
+    $(document).ready(function() {
+        const savedUrl = localStorage.getItem('serverUrl');
+        const savedStreamType = localStorage.getItem('streamType');
+        
+        if (savedStreamType) {
+            selectStreamType(savedStreamType);
+        }
+        
+        if (savedUrl) {
+            $('#server-url').val(savedUrl);
+            $('#use-stun').prop('checked', localStorage.getItem('useStun') === 'true');
+            // 移除自动连接代码
+            // connectAndHide();
+        }
+        
+        // Monitor session ID changes
+        setInterval(() => {
+            const sessionId = document.getElementById('sessionid').value;
+            if (sessionId && sessionId !== '0') {
+                updateSessionDisplay(sessionId);
+            }
+        }, 1000);
+        
+        // Set up double-click handler for the media area
+        document.getElementById('media').addEventListener('click', function(e) {
+            const currentTime = new Date().getTime();
+            const timeDiff = currentTime - lastClickTime;
+            
+            if (timeDiff < 300) {  // Double click detected (within 300ms)
+                toggleControls();
+                e.preventDefault();
+            }
+            
+            lastClickTime = currentTime;
+        });
+        
+        // Show tooltip briefly on page load
+        setTimeout(() => {
+            document.getElementById('tooltip').classList.add('visible');
+            setTimeout(() => {
+                document.getElementById('tooltip').classList.remove('visible');
+            }, 3000);
+        }, 1000);
+        
+        // Show tooltip when user clicks once (to hint at double-click)
+        let tooltipTimeout;
+        document.getElementById('media').addEventListener('click', function() {
+            clearTimeout(tooltipTimeout);
+            document.getElementById('tooltip').classList.add('visible');
+            tooltipTimeout = setTimeout(() => {
+                document.getElementById('tooltip').classList.remove('visible');
+            }, 2000);
+        });
+    });
+
+    function reconnect() {
+        if (currentStreamType === 'webrtc') {
+            if (pc) {
+                stop();
+            }
+            
+            // Update connection status
+            updateConnectionStatus('connecting');
+            document.getElementById('connection-debug').textContent = '重新连接中...';
+            document.getElementById('video-debug').textContent = '无';
+            
+            setTimeout(() => {
+                start();
+            }, 500);
+        } else {
+            if (srsPlayer) {
+                srsPlayer.close();
+                srsPlayer = null;
+            }
+            
+            // Update connection status
+            updateConnectionStatus('connecting');
+            document.getElementById('connection-debug').textContent = '重新连接中...';
+            document.getElementById('video-debug').textContent = '无';
+            
+            setTimeout(() => {
+                startSrsPlayer();
+            }, 500);
+        }
+    }
+    
+    // Update connection status indicator
+    function updateConnectionStatus(state) {
+        const indicator = document.getElementById('connection-indicator');
+        const statusText = document.getElementById('connection-debug');
+        const sessionIdItem = document.querySelector('.status-item:nth-child(3)');
+        
+        if (state === 'connected') {
+            indicator.className = 'status-indicator connected';
+            if (currentStreamType === 'webrtc') {
+                statusText.textContent = '已连接';
+                // 显示连接码状态项
+                sessionIdItem.style.display = '';
+            } else {
+                statusText.textContent = 'SRS已连接';
+                // 隐藏连接码状态项
+                sessionIdItem.style.display = 'none';
+            }
+        } else if (state === 'connecting') {
+            indicator.className = 'status-indicator connecting';
+            statusText.textContent = '连接中...';
+            // 根据当前模式显示或隐藏连接码
+            sessionIdItem.style.display = currentStreamType === 'webrtc' ? '' : 'none';
+        } else {
+            indicator.className = 'status-indicator disconnected';
+            statusText.textContent = '未连接';
+            // 根据当前模式显示或隐藏连接码
+            sessionIdItem.style.display = currentStreamType === 'webrtc' ? '' : 'none';
+        }
+    }
+
+    function disconnect() {
+        if (currentStreamType === 'webrtc') {
+            if (pc) {
+                // Update UI
+                updateConnectionStatus('disconnected');
+                document.getElementById('video-debug').textContent = '无';
+                
+                // Close the peer connection
+                stop();
+                
+                // Clear video and audio elements
+                document.getElementById('video').srcObject = null;
+                document.getElementById('audio').srcObject = null;
+            }
+        } else {
+            if (srsPlayer) {
+                // Update UI
+                updateConnectionStatus('disconnected');
+                document.getElementById('video-debug').textContent = '无';
+                
+                // Close SRS player
+                srsPlayer.close();
+                srsPlayer = null;
+                
+                // Clear video element
+                document.getElementById('video').srcObject = null;
+            }
+        }
+        
+        // Show the control panel to allow reconnection
+        document.getElementById('control-panel').classList.remove('hidden');
+        controlsVisible = true;
+        
+        // 清除视频检查interval
+        if (videoCheckInterval) {
+            clearInterval(videoCheckInterval);
+            videoCheckInterval = null;
+        }
+    }
+</script>
+</body>
+</html>
